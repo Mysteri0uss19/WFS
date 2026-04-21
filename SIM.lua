@@ -6,17 +6,58 @@ end
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 WindUI:SetNotificationLower(true)
 
+WindUI:AddTheme({
+    Name                        = "GhostHub",
+    Accent                      = Color3.fromHex("#1a0a0a"),
+    Background                  = Color3.fromHex("#0d0d0d"),
+    BackgroundTransparency      = 0,
+    Outline                     = Color3.fromHex("#c0392b"),
+    Text                        = Color3.fromHex("#f0f0f0"),
+    Placeholder                 = Color3.fromHex("#7a3030"),
+    Button                      = Color3.fromHex("#7f1d1d"),
+    Icon                        = Color3.fromHex("#e87070"),
+    Hover                       = Color3.fromHex("#f0f0f0"),
+    WindowBackground            = Color3.fromHex("#0d0d0d"),
+    WindowShadow                = Color3.fromHex("#000000"),
+    DialogBackground            = Color3.fromHex("#0d0d0d"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle                 = Color3.fromHex("#f0f0f0"),
+    DialogContent               = Color3.fromHex("#cccccc"),
+    DialogIcon                  = Color3.fromHex("#e87070"),
+    WindowTopbarButtonIcon      = Color3.fromHex("#e87070"),
+    WindowTopbarTitle           = Color3.fromHex("#f0f0f0"),
+    WindowTopbarAuthor          = Color3.fromHex("#cccccc"),
+    WindowTopbarIcon            = Color3.fromHex("#f0f0f0"),
+    TabBackground               = Color3.fromHex("#1a0a0a"),
+    TabTitle                    = Color3.fromHex("#f0f0f0"),
+    TabIcon                     = Color3.fromHex("#e87070"),
+    ElementBackground           = Color3.fromHex("#1f0d0d"),
+    ElementTitle                = Color3.fromHex("#f0f0f0"),
+    ElementDesc                 = Color3.fromHex("#aaaaaa"),
+    ElementIcon                 = Color3.fromHex("#e87070"),
+    PopupBackground             = Color3.fromHex("#0d0d0d"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle                  = Color3.fromHex("#f0f0f0"),
+    PopupContent                = Color3.fromHex("#cccccc"),
+    PopupIcon                   = Color3.fromHex("#e87070"),
+    Toggle                      = Color3.fromHex("#7f1d1d"),
+    ToggleBar                   = Color3.fromHex("#e84040"),
+    Checkbox                    = Color3.fromHex("#7f1d1d"),
+    CheckboxIcon                = Color3.fromHex("#f0f0f0"),
+    Slider                      = Color3.fromHex("#7f1d1d"),
+    SliderThumb                 = Color3.fromHex("#e84040"),
+})
 local Window = WindUI:CreateWindow({
-    Title                       = "WFS",
-    Icon                        = "crown",
+    Title                       = "World Fighter - Ghost Hub",
+    Icon                        = "rbxassetid://110552700896064",
     Author                      = "by TEN",
-    Folder                      = "WFS_Config",
+    Folder                      = "GhostHub/WFS",
     Size                        = UDim2.fromOffset(600, 480),
     MinSize                     = Vector2.new(560, 350),
     MaxSize                     = Vector2.new(850, 560),
     Transparent                 = true,
-    Theme                       = "Dark",
-    AccentColor                 = Color3.fromRGB(124, 58, 237),
+    Theme                       = "GhostHub",
+    AccentColor                 = Color3.fromHex("#c0392b"),
     Resizable                   = true,
     SideBarWidth                = 200,
     BackgroundImageTransparency = 0.42,
@@ -25,13 +66,14 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({Title="v0.0.5",  Icon="",      Color=Color3.fromHex("#30ff6a"), Radius=0})
-Window:Tag({Title="AXEL HUB",Icon="crown", Color=Color3.fromHex("#7c3aed"), Radius=6})
+Window:Tag({Title="GhostHub",Icon="crown", Color=Color3.fromHex("#7c3aed"), Radius=6})
 
 task.defer(function()
     Window:SetToggleKey(Enum.KeyCode.LeftControl)
 end)
 
 local FarmTab    = Window:Tab({ Title="Farming",  Icon="swords" })
+local GamemodeTab = Window:Tab({ Title="Gamemode", Icon="gamepad-2" })
 local QuestTab   = Window:Tab({ Title="Quest",    Icon="list"   })
 local SummonTab  = Window:Tab({ Title="Summon",   Icon="star"   })
 local MiscTab    = Window:Tab({ Title="Misc",     Icon="gift"   })
@@ -90,6 +132,7 @@ LoadConfig()
 -- State Variables
 -- ============================================================
 local isAttacking         = false
+local isAutoSecretBoss    = false  
 local isFastFarming       = false
 local isAutoFarm          = false
 local isAutoEquip         = false
@@ -111,7 +154,10 @@ local isAutoDemonlord     = false
 local isAutoRollFightStyle = false
 local isAutoRollClass      = false
 local isAutoRollSlimePower = false
-local isAutoDelete         = false
+local isAutoDelete         = false  
+
+local achieveConnections  = {}
+local isClaimingAchieve   = false
 
 local isAutoTrial       = false
 local trialTargetWave   = Options.LeaveAtWave or 10
@@ -506,11 +552,10 @@ local function teleportToStar(starName)
 end
 
 -- ============================================================
--- FARM TAB UI
+-- FARM TAB UI 
 -- ============================================================
 local selectedFarmWorld   = Options.SelectedFarmWorld or getWorldsList()[1] or ""
 local selectedFarmZone    = Options.SelectedFarmZone or getZonesList(selectedFarmWorld)[1] or ""
-local selectedFarmEnemies = Options.SelectedEnemies or {}
 
 local WorldDropdown
 local ZoneDropdown
@@ -527,9 +572,7 @@ WorldDropdown = FarmTab:Dropdown({
         SaveConfig()
         
         local newZones = getZonesList(v)
-        if ZoneDropdown then
-            ZoneDropdown:Refresh(newZones)
-        end
+        if ZoneDropdown then ZoneDropdown:Refresh(newZones) end
         
         if not table.find(newZones, selectedFarmZone) then
             selectedFarmZone = newZones[1] or ""
@@ -585,9 +628,59 @@ FarmTab:Button({
         WorldDropdown:Refresh(getWorldsList())
         ZoneDropdown:Refresh(getZonesList(selectedFarmWorld))
         EnemyDropdown:Refresh(getEnemiesList(selectedFarmWorld, selectedFarmZone))
-        WindUI:Notify({ Title = "List Updated", Content = "Refreshed Worlds, Zones, and Enemies!", Duration = 3 })
+        WindUI:Notify({ Title = "List Updated", Content = "Refreshed!", Duration = 2 })
     end
 })
+
+serverEnemiesWorld.ChildAdded:Connect(function()
+    task.wait(0.5)
+    local newWorlds = getWorldsList()
+    if WorldDropdown then WorldDropdown:Refresh(newWorlds) end
+    if ZoneDropdown then ZoneDropdown:Refresh(getZonesList(selectedFarmWorld)) end
+    if EnemyDropdown then EnemyDropdown:Refresh(getEnemiesList(selectedFarmWorld, selectedFarmZone)) end
+end)
+
+serverEnemiesWorld.ChildRemoved:Connect(function()
+    task.wait(0.5)
+    local newWorlds = getWorldsList()
+    if WorldDropdown then WorldDropdown:Refresh(newWorlds) end
+    if ZoneDropdown then ZoneDropdown:Refresh(getZonesList(selectedFarmWorld)) end
+    if EnemyDropdown then EnemyDropdown:Refresh(getEnemiesList(selectedFarmWorld, selectedFarmZone)) end
+end)
+
+task.spawn(function()
+    local lastDetectedWorld = ""
+    local lastDetectedZone  = 0
+    while true do
+        task.wait(3)
+        local currentWorld, currentZone = getCurrentWorldName()
+        if currentWorld ~= "" and 
+           (currentWorld ~= lastDetectedWorld or currentZone ~= lastDetectedZone) then
+            lastDetectedWorld = currentWorld
+            lastDetectedZone  = currentZone
+
+            local worldList = getWorldsList()
+            if table.find(worldList, currentWorld) then
+                selectedFarmWorld = currentWorld
+                Options.SelectedFarmWorld = currentWorld
+                SaveConfig()
+                if WorldDropdown then WorldDropdown:Refresh(worldList) end
+
+                local zoneList = getZonesList(currentWorld)
+                local zoneStr  = tostring(currentZone)
+                if table.find(zoneList, zoneStr) then
+                    selectedFarmZone = zoneStr
+                    Options.SelectedFarmZone = zoneStr
+                    SaveConfig()
+                end
+                if ZoneDropdown then ZoneDropdown:Refresh(zoneList) end
+                if EnemyDropdown then
+                    EnemyDropdown:Refresh(getEnemiesList(selectedFarmWorld, selectedFarmZone))
+                end
+            end
+        end
+    end
+end)
 
 -- ============================================================
 -- Auto Farm
@@ -647,8 +740,6 @@ FarmTab:Toggle({
     end
 })
 
-FarmTab:Divider()
-
 -- ============================================================
 -- Auto Fast Clicker 
 -- ============================================================
@@ -665,20 +756,20 @@ FarmTab:Toggle({
             task.spawn(function()
                 while isAttacking do
                     pcall(function()
+                        local bestID = nil
+                        local shortestDist = math.huge 
+
                         local char = player.Character
                         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                        if not hrp then return end
-                        
-                        local myPos = hrp.Position
-                        local bestID = nil
-                        local shortestDist = 40
-                        
+                        local myPos = hrp and hrp.Position or Vector3.zero
+
                         local function checkTarget(node)
                             local sID = node:GetAttribute("ID")
                             if sID and not node:GetAttribute("Died") then
                                 local hp = node:GetAttribute("Health")
                                 if not hp or tonumber(hp) > 0 then
-                                    local pos = node:IsA("Model") and node:GetPivot().Position or (node:IsA("BasePart") and node.Position)
+                                    local pos = node:IsA("Model") and node:GetPivot().Position
+                                             or (node:IsA("BasePart") and node.Position)
                                     if pos then
                                         local dist = (pos - myPos).Magnitude
                                         if dist < shortestDist then
@@ -690,7 +781,9 @@ FarmTab:Toggle({
                             end
                         end
 
-                        local serverEnemiesWorld = workspace:FindFirstChild("Server") and workspace.Server:FindFirstChild("Enemies") and workspace.Server.Enemies:FindFirstChild("World")
+                        local serverEnemiesWorld = workspace:FindFirstChild("Server")
+                            and workspace.Server:FindFirstChild("Enemies")
+                            and workspace.Server.Enemies:FindFirstChild("World")
                         if serverEnemiesWorld then
                             for _, worldMap in ipairs(serverEnemiesWorld:GetChildren()) do
                                 for _, group in ipairs(worldMap:GetChildren()) do
@@ -701,7 +794,8 @@ FarmTab:Toggle({
                             end
                         end
 
-                        local clientEnemies = workspace:FindFirstChild("Client") and workspace.Client:FindFirstChild("Enemies")
+                        local clientEnemies = workspace:FindFirstChild("Client")
+                            and workspace.Client:FindFirstChild("Enemies")
                         if clientEnemies then
                             for _, enemy in ipairs(clientEnemies:GetChildren()) do
                                 checkTarget(enemy)
@@ -713,7 +807,9 @@ FarmTab:Toggle({
                             end
                         end
 
-                        local serverGamemodes = workspace:FindFirstChild("Server") and workspace.Server:FindFirstChild("Enemies") and workspace.Server.Enemies:FindFirstChild("Gamemodes")
+                        local serverGamemodes = workspace:FindFirstChild("Server")
+                            and workspace.Server:FindFirstChild("Enemies")
+                            and workspace.Server.Enemies:FindFirstChild("Gamemodes")
                         if serverGamemodes then
                             for _, gm in ipairs(serverGamemodes:GetChildren()) do
                                 for _, enemy in ipairs(gm:GetChildren()) do
@@ -739,9 +835,9 @@ FarmTab:Toggle({
 })
 
 -- ============================================================
--- Auto Trial
+-- GamemodeTab
 -- ============================================================
-FarmTab:Toggle({
+GamemodeTab:Toggle({
     Title = "Auto Trial",
     Icon  = "clock",
     Type  = "Checkbox",
@@ -784,16 +880,23 @@ FarmTab:Toggle({
                                 end
                                 return tostring(waveObj)
                             end)
+                            
                             if ok and type(waveText) == "string" then
                                 local currentWave = string.match(waveText, "(%d+)")
-                                if currentWave and tonumber(currentWave) >= trialTargetWave then shouldLeave = true end
+                                if isAutoLeaveTrial and currentWave and tonumber(currentWave) >= trialTargetWave then shouldLeave = true end
                             end
 
                             if shouldLeave then
                                 fireRemote({{{"General", "Gamemodes", "Leave", "Trial Easy", n = 4}, "\002"}})
-                                WindUI:Notify({ Title = "Trial Ended", Content = "Left Trial → Returning to " .. preTrialWorld .. " (Zone " .. preTrialZone .. ")", Duration = 5 })
-                                task.wait(3)
-                                fireRemote({{{"Player", "Teleport", "Teleport", preTrialWorld, preTrialZone, n = 5}, "\002"}})
+                                if isAutoDragonDefense then
+                                    WindUI:Notify({ Title = "Trial Ended", Content = "Returning to Dragon Verse Zone 2 for Defense!", Duration = 5 })
+                                    task.wait(3)
+                                    fireRemote({{{"Player", "Teleport", "Teleport", "Dragon Verse", 2, n = 5}, "\002"}})
+                                else
+                                    WindUI:Notify({ Title = "Trial Ended", Content = "Left Trial → Returning to " .. preTrialWorld .. " (Zone " .. preTrialZone .. ")", Duration = 5 })
+                                    task.wait(3)
+                                    fireRemote({{{"Player", "Teleport", "Teleport", preTrialWorld, preTrialZone, n = 5}, "\002"}})
+                                end
                                 task.wait(3)
                                 isInsideTrial = false
                             else
@@ -820,9 +923,10 @@ FarmTab:Toggle({
                                             end
                                             return tostring(wObj)
                                         end)
+                                        
                                         if ok2 and type(wt2) == "string" then
                                             local cw2 = string.match(wt2, "(%d+)")
-                                            if cw2 and tonumber(cw2) >= trialTargetWave then break end
+                                            if isAutoLeaveTrial and cw2 and tonumber(cw2) >= trialTargetWave then break end
                                         end
 
                                         local curChar = player.Character
@@ -835,7 +939,6 @@ FarmTab:Toggle({
                                             end
                                         end
                                         task.wait(0.1)
-
                                     end
                                 else
                                     task.wait(0.5)
@@ -854,7 +957,19 @@ FarmTab:Toggle({
     end
 })
 
-FarmTab:Slider({
+GamemodeTab:Toggle({
+    Title = "Auto Leave Trial",
+    Icon  = "door-open",
+    Type  = "Checkbox",
+    Value = Options.AutoLeaveTrial or false,
+    Callback = function(v)
+        isAutoLeaveTrial = v
+        Options.AutoLeaveTrial = v
+        SaveConfig()
+    end
+})
+
+GamemodeTab:Slider({
     Title = "Leave at Wave",
     Icon  = "skip-forward",
     Step  = 1,
@@ -870,10 +985,29 @@ FarmTab:Slider({
     end
 })
 
+local isAutoLeaveDragon = Options.AutoLeaveDragon or false
+local dragonTargetWave  = Options.LeaveDragonAtWave or 50
+
+GamemodeTab:Divider()
+
+local function getSaiyanKeyCount()
+    local ok, count = pcall(function()
+        local data = player.PlayerGui.UI.HUD.Keys
+        local total = 0
+        for _, key in ipairs(data:GetChildren()) do
+            if key.Name == "Saiyan Key" or string.find(key.Name, "Saiyan") then
+                total += 1
+            end
+        end
+        return total
+    end)
+    return (ok and count) or 0
+end
+
 -- ============================================================
 -- Auto Dragon Defense
 -- ============================================================
-FarmTab:Toggle({
+GamemodeTab:Toggle({
     Title = "Auto Dragon Defense",
     Icon  = "shield",
     Type  = "Checkbox",
@@ -883,123 +1017,131 @@ FarmTab:Toggle({
         Options.AutoDragonDefense = v
         SaveConfig()
         if isAutoDragonDefense then
+            fireRemote({{{"Player", "Teleport", "Teleport", "Dragon Verse", 2, n = 5}, "\002"}})
+            
             task.spawn(function()
                 while isAutoDragonDefense do
-
-                    local ok, dragonNode = pcall(function()
-                        return workspace.Server.Interactable["Dragon Arena"]["Dragon Defense Gamemode"]
-                    end)
-                    if ok and dragonNode then
-                        local char = player.Character
-                        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                        if hrp then
-                            local ok2, cf = pcall(function()
-                                return dragonNode:IsA("Model") and dragonNode:GetPivot()
-                                    or (dragonNode:IsA("BasePart") and dragonNode.CFrame)
-                            end)
-                            if ok2 and cf then hrp.CFrame = cf * CFrame.new(0, 5, 0) end
-                        end
-                    else
-                        task.wait(3)
+                    
+                    if isInsideTrial then
+                        task.wait(1)
                         continue
                     end
 
-                    task.wait(0.5)
-                    fireRemote({{{"General", "Gamemodes", "Join", "Dragon Defense", n = 4}, "\002"}})
-                    task.wait(1.5)
-
-                    local ok3, confirmBtn = pcall(function()
-                        return player.PlayerGui.Selection.Frames.Confirmation.Main.Buttons.Confirm
-                    end)
-                    if ok3 and confirmBtn then
-                        local vim = game:GetService("VirtualInputManager")
-                        local ap = confirmBtn.AbsolutePosition
-                        local as = confirmBtn.AbsoluteSize
-                        vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, true,  game, 1)
-                        task.wait(0.05)
-                        vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, false, game, 1)
-                        task.wait(0.5)
-                        local okCan, cancelBtn = pcall(function()
-                            return player.PlayerGui.Selection.Frames.Confirmation.Main.Buttons.Cancel
-                        end)
-                        if okCan and cancelBtn then
-                            local ap2 = cancelBtn.AbsolutePosition
-                            local as2 = cancelBtn.AbsoluteSize
-                            vim:SendMouseButtonEvent(ap2.X + as2.X/2, ap2.Y + as2.Y/2, 0, true,  game, 1)
-                            task.wait(0.05)
-                            vim:SendMouseButtonEvent(ap2.X + as2.X/2, ap2.Y + as2.Y/2, 0, false, game, 1)
-                        end
-                    end
-
-                    task.wait(2)
-                    local okMap, defenseNode = pcall(function()
-                        return workspace.Client.Maps["Dragon Defense"].Map.Defense
-                    end)
-                    if okMap and defenseNode then
-                        local char = player.Character
-                        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                        if hrp then
-                            local ok2, cf = pcall(function()
-                                return defenseNode:IsA("Model") and defenseNode:GetPivot()
-                                    or (defenseNode:IsA("BasePart") and defenseNode.CFrame)
-                            end)
-                            if ok2 and cf then
-                                hrp.CFrame = cf * CFrame.new(0, 5, 0)
-                                WindUI:Notify({ Title = "Dragon Defense", Content = "Teleported to Defense point!", Duration = 3 })
-                            end
-                        end
-                    else
-                        WindUI:Notify({ Title = "Dragon Defense", Content = "Map failed to load. Retrying...", Duration = 2 })
-                        task.wait(3)
+                    local curWorld, curZone = getCurrentWorldName()
+                    if curWorld ~= "Dragon Verse" or curZone ~= 2 then
+                        fireRemote({{{"Player", "Teleport", "Teleport", "Dragon Verse", 2, n = 5}, "\002"}})
+                        task.wait(4)
                         continue
                     end
 
-                    task.wait(1)
+                    local keyCount = getSaiyanKeyCount()
 
-                    local function getDragonTarget()
-                        local char  = player.Character
-                        local myHRP = char and char:FindFirstChild("HumanoidRootPart")
-                        local myPos = myHRP and myHRP.Position or Vector3.zero
-
-                        local bestTarget   = nil
-                        local bestID       = nil
-                        local shortestDist = math.huge
-
-                        local okC, clientEnemies = pcall(function() return workspace.Client.Enemies end)
-                        if okC and clientEnemies then
-                            for _, child in ipairs(clientEnemies:GetDescendants()) do
-                                local sID    = child:GetAttribute("ID")
-                                local isDead = child:GetAttribute("Died")
-                                local hp     = child:GetAttribute("Health")
-
-                                if sID and not isDead and (not hp or tonumber(hp) > 0) then
-                                    local tp = child:IsA("Model") and child:GetPivot().Position
-                                            or (child:IsA("BasePart") and child.Position)
-                                    if tp then
-                                        local dist = (tp - myPos).Magnitude
-                                        if dist < shortestDist then
-                                            shortestDist = dist
-                                            bestTarget   = child
-                                            bestID       = sID
-                                        end
+                    if keyCount == 0 then
+                        WindUI:Notify({ Title = "Key Alert", Content = "No Saiyan Keys! Farming in Zone 2...", Duration = 3 })
+                        
+                        while isAutoDragonDefense and getSaiyanKeyCount() == 0 and not isInsideTrial do
+                            pcall(function()
+                                local enemies = workspace.Server.Enemies.World["Dragon Verse"]["2"]:GetChildren()
+                                local target = enemies[math.random(1, #enemies)]
+                                if target and target.Parent then
+                                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                    local tPos = target:IsA("Model") and target:GetPivot() or (target:IsA("BasePart") and target.CFrame)
+                                    if hrp and tPos then
+                                        hrp.CFrame = tPos * CFrame.new(0, 3, 0)
                                     end
                                 end
+                            end)
+                            task.wait(0.1)
+                        end
+                    else
+                        local ok, dragonNode = pcall(function()
+                            return workspace.Server.Interactable["Dragon Arena"]["Dragon Defense Gamemode"]
+                        end)
+                        if ok and dragonNode then
+                            local char = player.Character
+                            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local ok2, cf = pcall(function()
+                                    return dragonNode:IsA("Model") and dragonNode:GetPivot()
+                                        or (dragonNode:IsA("BasePart") and dragonNode.CFrame)
+                                end)
+                                if ok2 and cf then hrp.CFrame = cf * CFrame.new(0, 5, 0) end
                             end
+                        else
+                            task.wait(3)
+                            continue
                         end
 
-                        if not bestTarget then
-                            local okS, serverDD = pcall(function()
-                                return workspace.Server.Enemies.Gamemodes["Dragon Defense"]
-                            end)
-                            if okS and serverDD then
-                                for _, child in ipairs(serverDD:GetDescendants()) do
+                        task.wait(0.5)
+                        fireRemote({{{"General", "Gamemodes", "Join", "Dragon Defense", n = 4}, "\002"}})
+                        task.wait(1.5)
+
+                        task.wait(1)
+                        
+                        local okConfirm, confirmBtn = pcall(function()
+                            return player.PlayerGui.Selection.Frames.Confirmation.Main.Buttons.Confirm
+                        end)
+                        if okConfirm and confirmBtn then
+                            local vim = game:GetService("VirtualInputManager")
+                            local ap = confirmBtn.AbsolutePosition
+                            local as = confirmBtn.AbsoluteSize
+                            if as.X > 0 and as.Y > 0 then
+                                vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, true,  game, 1)
+                                task.wait(0.05)
+                                vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, false, game, 1)
+                            end
+                            task.wait(0.5)
+                        end
+                        
+                        pcall(function()
+                            player.PlayerGui.Selection.Frames.Confirmation.Visible = false
+                            player.PlayerGui.UI.HUD.Visible = true
+                        end)
+
+                        task.wait(2)
+                        local okMap, defenseNode = pcall(function()
+                            return workspace.Client.Maps["Dragon Defense"].Map.Defense
+                        end)
+                        if okMap and defenseNode then
+                            local char = player.Character
+                            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local ok2, cf = pcall(function()
+                                    return defenseNode:IsA("Model") and defenseNode:GetPivot()
+                                        or (defenseNode:IsA("BasePart") and defenseNode.CFrame)
+                                end)
+                                if ok2 and cf then
+                                    hrp.CFrame = cf * CFrame.new(0, 5, 0)
+                                    WindUI:Notify({ Title = "Dragon Defense", Content = "Teleported to Defense point!", Duration = 3 })
+                                end
+                            end
+                        else
+                            WindUI:Notify({ Title = "Dragon Defense", Content = "Map failed to load. Retrying...", Duration = 2 })
+                            task.wait(3)
+                            continue
+                        end
+
+                        task.wait(1)
+
+                        local function getDragonTarget()
+                            local char  = player.Character
+                            local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+                            local myPos = myHRP and myHRP.Position or Vector3.zero
+
+                            local bestTarget   = nil
+                            local bestID       = nil
+                            local shortestDist = math.huge
+
+                            local okC, clientEnemies = pcall(function() return workspace.Client.Enemies end)
+                            if okC and clientEnemies then
+                                for _, child in ipairs(clientEnemies:GetDescendants()) do
                                     local sID    = child:GetAttribute("ID")
                                     local isDead = child:GetAttribute("Died")
                                     local hp     = child:GetAttribute("Health")
 
                                     if sID and not isDead and (not hp or tonumber(hp) > 0) then
                                         local tp = child:IsA("Model") and child:GetPivot().Position
-                                                or (child:IsA("BasePart") and child.Position)
+                                            or (child:IsA("BasePart") and child.Position)
                                         if tp then
                                             local dist = (tp - myPos).Magnitude
                                             if dist < shortestDist then
@@ -1011,63 +1153,151 @@ FarmTab:Toggle({
                                     end
                                 end
                             end
-                        end
 
-                        return bestTarget, bestID
-                    end
+                            if not bestTarget then
+                                local okS, serverDD = pcall(function()
+                                    return workspace.Server.Enemies.Gamemodes["Dragon Defense"]
+                                end)
+                                if okS and serverDD then
+                                    for _, child in ipairs(serverDD:GetDescendants()) do
+                                        local sID    = child:GetAttribute("ID")
+                                        local isDead = child:GetAttribute("Died")
+                                        local hp     = child:GetAttribute("Health")
 
-                    local farmStart = tick()
-                    while isAutoDragonDefense do
-                        local char  = player.Character
-                        local myHRP = char and char:FindFirstChild("HumanoidRootPart")
-                        if not myHRP then task.wait(0.5) continue end
-
-                        local bestTarget, bestID = getDragonTarget()
-
-                        if bestTarget and bestID then
-                            farmStart = tick()
-
-                            local tCF = bestTarget:IsA("Model") and bestTarget:GetPivot()
-                                      or (bestTarget:IsA("BasePart") and bestTarget.CFrame)
-                            if tCF and (myHRP.Position - tCF.Position).Magnitude > 8 then
-                                myHRP.CFrame = tCF * CFrame.new(0, 3, 0)
-                            end
-
-                            while isAutoDragonDefense do
-                                if not bestTarget or not bestTarget.Parent then break end
-
-                                local isDead = bestTarget:GetAttribute("Died")
-                                local hp     = bestTarget:GetAttribute("Health")
-                                if isDead or (hp and tonumber(hp) <= 0) then
-                                    task.wait(0.2)
-                                    break
-                                end
-
-                                local curHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                                if curHRP then
-                                    local tCF2 = bestTarget:IsA("Model") and bestTarget:GetPivot()
-                                              or (bestTarget:IsA("BasePart") and bestTarget.CFrame)
-                                    if tCF2 and (curHRP.Position - tCF2.Position).Magnitude > 8 then
-                                        curHRP.CFrame = tCF2 * CFrame.new(0, 3, 0)
+                                        if sID and not isDead and (not hp or tonumber(hp) > 0) then
+                                            local tp = child:IsA("Model") and child:GetPivot().Position
+                                                or (child:IsA("BasePart") and child.Position)
+                                            if tp then
+                                                local dist = (tp - myPos).Magnitude
+                                                if dist < shortestDist then
+                                                    shortestDist = dist
+                                                    bestTarget   = child
+                                                    bestID       = sID
+                                                end
+                                            end
+                                        end
                                     end
                                 end
-
-                                task.wait(0.1)
                             end
 
-                        else
-                            if tick() - farmStart > 600 then
-                                WindUI:Notify({ Title = "Dragon Defense", Content = "Round ended. Rejoining...", Duration = 3 })
-                                break
-                            end
-                            task.wait(0.5)
+                            return bestTarget, bestID
                         end
-                    end
 
-                    if isAutoDragonDefense then task.wait(2) end
+                        local farmStart = tick()
+                        while isAutoDragonDefense do
+                            
+                            if isInsideTrial then break end
+
+                            local char  = player.Character
+                            local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+                            if not myHRP then task.wait(0.5) continue end
+
+                            local shouldLeave = false
+                            local okWave, waveText = pcall(function()
+                                local waveObj = player.PlayerGui.UI.HUD.Gamemodes["Dragon Defense"].Main.Wave.Value
+                                if typeof(waveObj) == "Instance" then
+                                    if waveObj:IsA("TextLabel") or waveObj:IsA("TextButton") or waveObj:IsA("TextBox") then
+                                        return waveObj.ContentText ~= "" and waveObj.ContentText or waveObj.Text
+                                    end
+                                    return tostring(waveObj.Value)
+                                end
+                                return tostring(waveObj)
+                            end)
+
+                            if okWave and type(waveText) == "string" then
+                                local currentWave = string.match(waveText, "(%d+)/") or string.match(waveText, "(%d+)")
+                                if isAutoLeaveDragon and currentWave and tonumber(currentWave) >= dragonTargetWave then
+                                    shouldLeave = true
+                                end
+                            end
+
+                            if shouldLeave then
+                                fireRemote({{{"General", "Gamemodes", "Leave", "Dragon Defense", n = 4}, "\002"}})
+                                WindUI:Notify({ Title = "Dragon Defense", Content = "Reached target wave! Returning to Dragon Verse...", Duration = 5 })
+                                task.wait(3)
+                                
+                                fireRemote({{{"Player", "Teleport", "Teleport", "Dragon Verse", 2, n = 5}, "\002"}})
+                                task.wait(3)
+                                break 
+                            end
+
+                            local bestTarget, bestID = getDragonTarget()
+
+                            if bestTarget and bestID then
+                                farmStart = tick()
+
+                                local tCF = bestTarget:IsA("Model") and bestTarget:GetPivot()
+                                          or (bestTarget:IsA("BasePart") and bestTarget.CFrame)
+                                if tCF and (myHRP.Position - tCF.Position).Magnitude > 8 then
+                                    myHRP.CFrame = tCF * CFrame.new(0, 3, 0)
+                                end
+
+                                while isAutoDragonDefense do
+                                    
+                                    if isInsideTrial then break end
+
+                                    if not bestTarget or not bestTarget.Parent then break end
+
+                                    local isDead = bestTarget:GetAttribute("Died")
+                                    local hp     = bestTarget:GetAttribute("Health")
+                                    if isDead or (hp and tonumber(hp) <= 0) then
+                                        task.wait(0.2)
+                                        break
+                                    end
+
+                                    local curHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                    if curHRP then
+                                        local tCF2 = bestTarget:IsA("Model") and bestTarget:GetPivot()
+                                            or (bestTarget:IsA("BasePart") and bestTarget.CFrame)
+                                        if tCF2 and (curHRP.Position - tCF2.Position).Magnitude > 8 then
+                                            curHRP.CFrame = tCF2 * CFrame.new(0, 3, 0)
+                                        end
+                                    end
+
+                                    task.wait(0.1)
+                                end
+
+                            else
+                                if tick() - farmStart > 600 then
+                                    WindUI:Notify({ Title = "Dragon Defense", Content = "Round ended. Rejoining...", Duration = 3 })
+                                    break
+                                end
+                                task.wait(0.5)
+                            end
+                        end
+                        task.wait(1)
+                    end
                 end
             end)
         end
+    end
+})
+
+GamemodeTab:Toggle({
+    Title = "Auto Leave Dragon Defense",
+    Icon  = "door-open",
+    Type  = "Checkbox",
+    Value = Options.AutoLeaveDragon or false,
+    Callback = function(v)
+        isAutoLeaveDragon = v
+        Options.AutoLeaveDragon = v
+        SaveConfig()
+    end
+})
+
+GamemodeTab:Slider({
+    Title = "Leave at Wave (Dragon)",
+    Icon  = "skip-forward",
+    Step  = 1,
+    Value = {
+        Min     = 1,
+        Max     = 100,
+        Default = Options.LeaveDragonAtWave or 50
+    },
+    Callback = function(v)
+        dragonTargetWave = v
+        Options.LeaveDragonAtWave = v
+        SaveConfig()
     end
 })
 
@@ -1190,6 +1420,44 @@ SummonTab:Toggle({
 })
 
 SummonTab:Toggle({
+    Title = "Auto Equip Accessories",
+    Icon  = "gem",
+    Type  = "Checkbox",
+    Value = Options.AutoEquipAcc or false,
+    Callback = function(v)
+        Options.AutoEquipAcc = v
+        SaveConfig()
+        if v then
+            task.spawn(function()
+                while Options.AutoEquipAcc do
+                    fireRemote({{{"General","Accessories","EquipBest","Power",n=4},"\002"}})
+                    task.wait(60)
+                end
+            end)
+        end
+    end
+})
+
+SummonTab:Toggle({
+    Title = "Auto Equip Best Sword",
+    Icon  = "swords",
+    Type  = "Checkbox",
+    Value = Options.AutoEquipSword or false,
+    Callback = function(v)
+        Options.AutoEquipSword = v
+        SaveConfig()
+        if v then
+            task.spawn(function()
+                while Options.AutoEquipSword do
+                    fireRemote({{{"General","Swords","EquipBest","Power",n=4},"\002"}})
+                    task.wait(60)
+                end
+            end)
+        end
+    end
+})
+
+SummonTab:Toggle({
     Title = "Auto Awaken",
     Icon  = "zap",
     Type  = "Checkbox",
@@ -1239,7 +1507,7 @@ SummonTab:Toggle({
                 while isAutoSummon do
                     teleportToStar(selectedStar)
                     task.wait(0.2)
-                    fireRemote({{{"General","Stars","Open",selectedStar,5,n=5},"\002"}})
+                    fireRemote({{{"General","Stars","Open",selectedStar,99,n=5},"\002"}})
                     task.wait(1)
                 end
             end)
@@ -1259,7 +1527,7 @@ SummonTab:Toggle({
         if isAutoSummon then
             task.spawn(function()
                 while isAutoSummon do
-                    fireRemote({{{"General","Stars","Open",selectedStar,5,n=5},"\002"}})
+                    fireRemote({{{"General","Stars","Open",selectedStar,99,n=5},"\002"}})
                     task.wait(1)
                 end
             end)
@@ -1271,10 +1539,27 @@ SummonTab:Toggle({
 -- MISC TAB
 -- ============================================================
 local redeemCodesList = {
-    "RELEASE", "SRRY4SHUTDOWN", "SRRY4SHUTDOWN2", "TIOGADIHIT!",
-    "THX1KCCU", "2KCCU!", "THANKYOU3KCCU", "4KONCHAMBER!",
-    "ALREADY5K?", "6KTHXSOMUCH", "7KISALOT!", "THANKS1KLIKES",
-    "100KVISITSONCHAMBER!", "SRRY4SHUTDOWN3"
+    "RELEASE", 
+    "SRRY4SHUTDOWN", 
+    "SRRY4SHUTDOWN2", 
+    "TIOGADIHIT!",
+    "THX1KCCU", 
+    "2KCCU!", 
+    "THANKYOU3KCCU", 
+    "4KONCHAMBER!",
+    "ALREADY5K?", 
+    "6KTHXSOMUCH", 
+    "7KISALOT!", 
+    "THANKS1KLIKES",
+    "100KVISITSONCHAMBER!", 
+    "SRRY4SHUTDOWN3",
+    "RELEASEPATCH",
+    "TY2KLIKES!!",
+    "THXFOR200KVISITS!",
+    "300KVISITSTHANKYOU!",
+    "400KVISITSINCREDIBLE",
+    "WOW500KVISITS!",
+    "1KFAVORITESTHX!"
 }
 
 MiscTab:Button({
@@ -1344,44 +1629,82 @@ MiscTab:Toggle({
         isAutoAchieve = v
         Options.AutoAchieve = v
         SaveConfig()
+        
+        if achieveConnections then
+            for _, conn in ipairs(achieveConnections) do
+                if conn.Connected then conn:Disconnect() end
+            end
+        end
+        achieveConnections = {}
+
         if isAutoAchieve then
             task.spawn(function()
-                while isAutoAchieve do
-                    pcall(function()
-                        local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
-                        local list = playerGui.UI.Frames.Achievements.Background.Main.List
-                        local canClaim = false
-                        
-                        for _, item in ipairs(list:GetChildren()) do
-                            if item:IsA("GuiObject") then
-                                local progressTitle = item:FindFirstChild("Background") 
-                                    and item.Background:FindFirstChild("Main")
-                                    and item.Background.Main:FindFirstChild("Progress")
-                                    and item.Background.Main.Progress:FindFirstChild("Title")
-                                
-                                if progressTitle then
-                                    local text = progressTitle.ContentText ~= "" and progressTitle.ContentText or progressTitle.Text
-                                    
-                                    local percentStr = text:match("(%d+%.?%d*)")
-                                    
-                                    if percentStr then
-                                        local percentNum = tonumber(percentStr)
-                                        if percentNum and percentNum >= 100 then
-                                            canClaim = true
-                                            break 
-                                        end
-                                    end
-                                end
+                local ok, list = pcall(function()
+                    return player.PlayerGui.UI.Frames.Achievements.Background.Main.List
+                end)
+                
+                if not (ok and list) then return end
+                
+                local function checkAndClaim(text)
+                    if not isAutoAchieve then return end
+                    local percentStr = text:match("(%d+%.?%d*)")
+                    
+                    if percentStr then
+                        local percentNum = tonumber(percentStr)
+                        if percentNum and percentNum >= 100 then
+                            if not isClaimingAchieve then
+                                isClaimingAchieve = true
+                                fireRemote({{{ "General", "Achievements", "ClaimAll", n = 3 }, "\002" }})
+                                task.wait(2)
+                                isClaimingAchieve = false
                             end
                         end
-                        
-                        if canClaim then
-                            fireRemote({{{ "General", "Achievements", "ClaimAll", n = 3 }, "\002" }})
-                            task.wait(1)
-                        end
-                    end)
-                    task.wait(60)
+                    end
                 end
+
+                local function hookTitle(title)
+                    checkAndClaim(title.ContentText ~= "" and title.ContentText or title.Text)
+                    
+                    local c1 = title:GetPropertyChangedSignal("Text"):Connect(function()
+                        checkAndClaim(title.Text)
+                    end)
+                    local c2 = title:GetPropertyChangedSignal("ContentText"):Connect(function()
+                        checkAndClaim(title.ContentText)
+                    end)
+                    
+                    table.insert(achieveConnections, c1)
+                    table.insert(achieveConnections, c2)
+                end
+
+                local function setupItem(item)
+                    if item:IsA("GuiObject") then
+                        local title = item:FindFirstChild("Background") 
+                            and item.Background:FindFirstChild("Main")
+                            and item.Background.Main:FindFirstChild("Progress")
+                            and item.Background.Main.Progress:FindFirstChild("Title")
+                        
+                        if title then
+                            hookTitle(title)
+                        else
+                            local c3 = item.DescendantAdded:Connect(function(desc)
+                                if desc.Name == "Title" and desc.Parent and desc.Parent.Name == "Progress" then
+                                    hookTitle(desc)
+                                end
+                            end)
+                            table.insert(achieveConnections, c3)
+                        end
+                    end
+                end
+
+                for _, item in ipairs(list:GetChildren()) do
+                    setupItem(item)
+                end
+
+                local c4 = list.ChildAdded:Connect(function(child)
+                    task.wait(0.1) 
+                    setupItem(child)
+                end)
+                table.insert(achieveConnections, c4)
             end)
         end
     end
@@ -1528,7 +1851,7 @@ GachaTab:Toggle({
 
 GachaTab:Toggle({
     Title = "Auto Roll Dragon Power",
-    Icon  = "dragon",
+    Icon  = "activity",
     Type  = "Checkbox",
     Value = Options.AutoDragonPower or false,
     Callback = function(v)
@@ -1671,7 +1994,7 @@ local targetDeleteSwords = {
     ["Common"]    = Options.DelSword_Common or false
 }
 
-local isAutoDelete = Options.AutoDeleteEnabled or false
+isAutoDelete = Options.AutoDeleteEnabled or false
 
 AutoDeleteTab:Toggle({
     Title = "Enable Auto Delete",
@@ -1982,3 +2305,74 @@ task.defer(function()
 end)
 
 FarmTab:Select()
+-- ======================= UI BUTTON =======================
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WFSToggleGui"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local targetGui = (gethui and gethui()) or (pcall(function() return CoreGui.Name end) and CoreGui) or player.PlayerGui
+ScreenGui.Parent = targetGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Name = "ToggleButton"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.BackgroundTransparency = 1
+ToggleBtn.Position = UDim2.new(0.5, 0, 0, 40)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Image = "rbxassetid://110552700896064"
+ToggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = ToggleBtn
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Parent = ToggleBtn
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(124, 58, 237)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local dragging, dragStart, startPos
+
+ToggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleBtn.Position
+        
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 42, 0, 42)}):Play()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging then
+            dragging = false
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+            
+            if dragStart and (input.Position - dragStart).Magnitude < 10 then
+                local vim = game:GetService("VirtualInputManager")
+                local keyStr = Options.ToggleUIKey or "RightControl"
+                local key = typeof(keyStr) == "EnumItem" and keyStr or Enum.KeyCode[keyStr]
+                if not key then key = Enum.KeyCode.RightControl end
+                
+                vim:SendKeyEvent(true, key, false, game)
+                task.wait(0.05)
+                vim:SendKeyEvent(false, key, false, game)
+            end
+        end
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
+        local delta = input.Position - dragStart
+        ToggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
