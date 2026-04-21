@@ -991,17 +991,18 @@ local dragonTargetWave  = Options.LeaveDragonAtWave or 50
 GamemodeTab:Divider()
 
 local function getSaiyanKeyCount()
-    local ok, count = pcall(function()
-        local data = player.PlayerGui.UI.HUD.Keys
-        local total = 0
-        for _, key in ipairs(data:GetChildren()) do
-            if key.Name == "Saiyan Key" or string.find(key.Name, "Saiyan") then
-                total += 1
-            end
-        end
-        return total
+    local ok, amountLabel = pcall(function()
+        return player.PlayerGui.UI.Frames.Inventory.Background.Categories.Items.List["Saiyan Key"].Background.Amount
     end)
-    return (ok and count) or 0
+    if not (ok and amountLabel) then return 0 end
+    
+    local text = ""
+    if amountLabel:IsA("TextLabel") or amountLabel:IsA("TextBox") then
+        text = amountLabel.ContentText ~= "" and amountLabel.ContentText or amountLabel.Text
+    end
+    
+    local num = tostring(text):match("(%d+)")
+    return tonumber(num) or 0
 end
 
 -- ============================================================
@@ -1040,19 +1041,44 @@ GamemodeTab:Toggle({
                         WindUI:Notify({ Title = "Key Alert", Content = "No Saiyan Keys! Farming in Zone 2...", Duration = 3 })
                         
                         while isAutoDragonDefense and getSaiyanKeyCount() == 0 and not isInsideTrial do
-                            pcall(function()
-                                local enemies = workspace.Server.Enemies.World["Dragon Verse"]["2"]:GetChildren()
-                                local target = enemies[math.random(1, #enemies)]
-                                if target and target.Parent then
-                                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                                    local tPos = target:IsA("Model") and target:GetPivot() or (target:IsA("BasePart") and target.CFrame)
-                                    if hrp and tPos then
-                                        hrp.CFrame = tPos * CFrame.new(0, 3, 0)
+                    pcall(function()
+                        local enemies = workspace.Server.Enemies.World["Dragon Verse"]["2"]:GetChildren()
+                        local validEnemies = {}
+                        for _, e in ipairs(enemies) do
+                            local isDead = e:GetAttribute("Died")
+                            local hp = e:GetAttribute("Health")
+                            if not isDead and (not hp or tonumber(hp) > 0) then
+                                table.insert(validEnemies, e)
+                            end
+                        end
+                        
+                        if #validEnemies == 0 then task.wait(0.5) return end
+                        
+                        local target = validEnemies[math.random(1, #validEnemies)]
+                        if target and target.Parent then
+                            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                            local tPos = target:IsA("Model") and target:GetPivot() or (target:IsA("BasePart") and target.CFrame)
+                            if hrp and tPos then
+                                hrp.CFrame = tPos * CFrame.new(0, 3, 0)
+                            end
+                            
+                            while isAutoDragonDefense and target and target.Parent do
+                                local isDead = target:GetAttribute("Died")
+                                local hp = target:GetAttribute("Health")
+                                if isDead or (hp and tonumber(hp) <= 0) then break end
+                                
+                                local curHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                if curHRP then
+                                    local tCF = target:IsA("Model") and target:GetPivot() or (target:IsA("BasePart") and target.CFrame)
+                                    if tCF and (curHRP.Position - tCF.Position).Magnitude > 8 then
+                                        curHRP.CFrame = tCF * CFrame.new(0, 3, 0)
                                     end
                                 end
-                            end)
-                            task.wait(0.1)
+                                task.wait(0.1)
+                            end
                         end
+                    end)
+                end
                     else
                         local ok, dragonNode = pcall(function()
                             return workspace.Server.Interactable["Dragon Arena"]["Dragon Defense Gamemode"]
