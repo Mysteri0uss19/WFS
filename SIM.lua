@@ -1239,7 +1239,7 @@ SummonTab:Toggle({
                 while isAutoSummon do
                     teleportToStar(selectedStar)
                     task.wait(0.2)
-                    fireRemote({{{"General","Stars","Open",selectedStar,3,n=5},"\002"}})
+                    fireRemote({{{"General","Stars","Open",selectedStar,5,n=5},"\002"}})
                     task.wait(1)
                 end
             end)
@@ -1259,7 +1259,7 @@ SummonTab:Toggle({
         if isAutoSummon then
             task.spawn(function()
                 while isAutoSummon do
-                    fireRemote({{{"General","Stars","Open",selectedStar,3,n=5},"\002"}})
+                    fireRemote({{{"General","Stars","Open",selectedStar,5,n=5},"\002"}})
                     task.wait(1)
                 end
             end)
