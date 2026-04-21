@@ -1103,7 +1103,7 @@ GamemodeTab:Toggle({
                         task.wait(1.5)
 
                         task.wait(1)
-                        
+
                         local okConfirm, confirmBtn = pcall(function()
                             return player.PlayerGui.Selection.Frames.Confirmation.Main.Buttons.Confirm
                         end)
@@ -1116,13 +1116,26 @@ GamemodeTab:Toggle({
                                 task.wait(0.05)
                                 vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, false, game, 1)
                             end
+                        end
+
+                        task.wait(5)
+
+                        local okCancel, cancelBtn = pcall(function()
+                            return player.PlayerGui.Selection.Frames.Confirmation.Main.Buttons.Cancel
+                        end)
+                        if okCancel and cancelBtn then
+                            local vim = game:GetService("VirtualInputManager")
+                            local ap = cancelBtn.AbsolutePosition
+                            local as = cancelBtn.AbsoluteSize
+                            if as.X > 0 and as.Y > 0 then
+                                vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, true,  game, 1)
+                                task.wait(0.05)
+                                vim:SendMouseButtonEvent(ap.X + as.X/2, ap.Y + as.Y/2, 0, false, game, 1)
+                            end
                             task.wait(0.5)
                         end
                         
-                        pcall(function()
-                            player.PlayerGui.Selection.Frames.Confirmation.Visible = false
-                            player.PlayerGui.UI.HUD.Visible = true
-                        end)
+                        
 
                         task.wait(2)
                         local okMap, defenseNode = pcall(function()
